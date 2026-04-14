@@ -31,10 +31,11 @@ export default function Home() {
 
   const tx = t[lang];
 
-  // Farcaster: farcasterWallet のみ表示。ブラウザ: それ以外を表示
-  const visibleConnectors = isInMiniApp
-    ? connectors.filter((c) => c.id === 'farcasterWallet')
-    : connectors.filter((c) => c.id !== 'farcasterWallet');
+  // farcasterWallet を先頭に、その他を後ろに並べて全て表示
+  const visibleConnectors = [
+    ...connectors.filter((c) => c.id === 'farcasterWallet'),
+    ...connectors.filter((c) => c.id !== 'farcasterWallet'),
+  ];
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || 'https://base-confessional.vercel.app';
