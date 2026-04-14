@@ -1,12 +1,14 @@
 'use client';
 
 import { type Confession, type WalletSins, calcSinScore, sinLabel } from '@/lib/blockscout';
+import { t, type Lang } from '@/lib/i18n';
 
 interface ConfessionCardProps {
   address: string;
   sins: WalletSins;
   confessions: Confession[];
   displayName?: string;
+  lang: Lang;
   onShare: () => void;
 }
 
@@ -16,19 +18,20 @@ const severityAccent: Record<string, string> = {
   grave:    'border-l-[#e8d0b0]',
 };
 
-function SinMeter({ score }: { score: number }) {
-  const { ja, color } = sinLabel(score);
+function SinMeter({ score, lang }: { score: number; lang: Lang }) {
+  const { ja, label, color } = sinLabel(score);
   const pct = `${score}%`;
+  const tx = t[lang];
+  const sinJaLabel = lang === 'ja' ? ja : label;
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-baseline">
         <span className="text-[9px] tracking-widest3 uppercase text-dim">
-          Sin Level
+          {tx.sinLevel}
         </span>
         <span className="text-xs font-mono text-paper/60">{score}/100</span>
       </div>
-      {/* プログレスバー */}
       <div className="h-px w-full bg-muted relative overflow-hidden">
         <div
           className="h-full absolute left-0 top-0 line-grow"
@@ -36,9 +39,9 @@ function SinMeter({ score }: { score: number }) {
         />
       </div>
       <div className="flex justify-between items-baseline">
-        <span className="text-xs italic text-accent">{ja}</span>
+        <span className="text-xs italic text-accent">{sinJaLabel}</span>
         <span className="text-[9px] tracking-widest2 uppercase" style={{ color }}>
-          {sinLabel(score).label}
+          {lang === 'ja' ? label : ja}
         </span>
       </div>
     </div>
@@ -59,10 +62,12 @@ export function ConfessionCard({
   sins,
   confessions,
   displayName,
+  lang,
   onShare,
 }: ConfessionCardProps) {
   const score = calcSinScore(sins);
   const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const tx = t[lang];
 
   return (
     <div className="w-full max-w-[360px] mx-auto space-y-8">
@@ -72,7 +77,7 @@ export function ConfessionCard({
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-muted line-grow" />
           <span className="text-[9px] tracking-widest3 uppercase text-dim px-2">
-            Confessional
+            {tx.confessionOf}
           </span>
           <div className="h-px flex-1 bg-muted line-grow" style={{ animationDelay: '0.1s' }} />
         </div>
@@ -88,6 +93,9 @@ export function ConfessionCard({
 
       {/* 懺悔リスト */}
       <div className="space-y-4">
+        <p className="text-[9px] tracking-widest3 uppercase text-dim/50">
+          {tx.iConfess}
+        </p>
         {confessions.map((c, i) => (
           <div
             key={i}
@@ -115,7 +123,7 @@ export function ConfessionCard({
         className="reveal-up"
         style={{ animationDelay: `${0.35 + confessions.length * 0.18}s` }}
       >
-        <SinMeter score={score} />
+        <SinMeter score={score} lang={lang} />
       </div>
 
       {/* 統計 */}
@@ -124,25 +132,23 @@ export function ConfessionCard({
         style={{ animationDelay: `${0.5 + confessions.length * 0.18}s` }}
       >
         <p className="text-[9px] tracking-widest3 uppercase text-dim mb-3">
-          The Record
+          {tx.theRecord}
         </p>
-        <StatRow label="Total TX"       value={sins.totalTxCount.toString()} />
+        <StatRow label={tx.statTotalTx} value={sins.totalTxCount.toString()} />
         <div className="h-px bg-muted/50 my-2" />
-        <p className="text-[8px] text-dim/40 italic mb-2">
-          Based on latest 100 transactions
-        </p>
-        <StatRow label="Gas Burned"     value={`${sins.totalGasEth.toFixed(5)} ETH`} />
-        <StatRow label="Contract Calls" value={sins.contractCalls.toString()} />
-        <StatRow label="Deployments"    value={sins.contractDeploys.toString()} />
-        <StatRow label="Night TX"       value={sins.nightTxCount.toString()} />
-        <StatRow label="Failed TX"      value={sins.failedTxCount.toString()} />
+        <p className="text-[8px] text-dim/40 italic mb-2">{tx.latest100}</p>
+        <StatRow label={tx.statGas}    value={`${sins.totalGasEth.toFixed(5)} ETH`} />
+        <StatRow label={tx.statCalls}  value={sins.contractCalls.toString()} />
+        <StatRow label={tx.statDeploys} value={sins.contractDeploys.toString()} />
+        <StatRow label={tx.statNight}  value={sins.nightTxCount.toString()} />
+        <StatRow label={tx.statFailed} value={sins.failedTxCount.toString()} />
         <StatRow
-          label="Days Inactive"
+          label={tx.statInactive}
           value={sins.daysSinceLastTx === 9999 ? '—' : `${sins.daysSinceLastTx}`}
         />
         <StatRow
-          label="Wallet Age"
-          value={sins.walletAgeDays === 0 ? 'New' : `${sins.walletAgeDays}d`}
+          label={tx.statAge}
+          value={sins.walletAgeDays === 0 ? (lang === 'ja' ? '新規' : 'New') : `${sins.walletAgeDays}d`}
         />
       </div>
 
@@ -160,10 +166,10 @@ export function ConfessionCard({
             active:scale-[0.98] transition-all duration-300
           "
         >
-          Confess on Farcaster
+          {tx.shareButton}
         </button>
         <p className="text-center text-[9px] text-dim/40 italic mt-3">
-          Based on Base Mainnet data &middot; No absolution guaranteed.
+          {tx.disclaimer}
         </p>
       </div>
 
