@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/farcaster';
 import {
@@ -16,7 +16,7 @@ import { ConfessionCard } from '@/components/ConfessionCard';
 type Phase = 'connect' | 'loading' | 'result' | 'error';
 
 export default function Home() {
-  const { isInMiniApp, isLoading: fcLoading, user, providerReady } = useFarcasterMiniApp();
+  const { isInMiniApp, isLoading: fcLoading, user } = useFarcasterMiniApp();
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
@@ -24,20 +24,10 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>('connect');
   const [sins, setSins] = useState<WalletSins | null>(null);
   const [confessions, setConfessions] = useState<Confession[]>([]);
-  // Farcasterプロバイダーの準備タイムアウト（5秒後は全コネクター表示）
-  const [providerTimedOut, setProviderTimedOut] = useState(false);
-
-  useEffect(() => {
-    if (!isInMiniApp || providerReady) return;
-    const t = setTimeout(() => setProviderTimedOut(true), 5000);
-    return () => clearTimeout(t);
-  }, [isInMiniApp, providerReady]);
-
-  // Farcaster: providerReady or timedOut になるまで injected のみ表示、それ以降は全表示
-  const showAllConnectors = !isInMiniApp || providerReady || providerTimedOut;
-  const visibleConnectors = showAllConnectors
-    ? connectors
-    : connectors.filter((c) => c.id === 'injected');
+  // Farcaster: farcasterWallet のみ表示。ブラウザ: それ以外を表示
+  const visibleConnectors = isInMiniApp
+    ? connectors.filter((c) => c.id === 'farcasterWallet')
+    : connectors.filter((c) => c.id !== 'farcasterWallet');
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || 'https://base-confessional.vercel.app';
