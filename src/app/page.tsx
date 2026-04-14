@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/farcaster';
 import {
@@ -23,12 +23,10 @@ export default function Home() {
 
   const [phase, setPhase] = useState<Phase>('connect');
 
-  // Farcaster環境: window.ethereum セット完了後に injected コネクターで自動接続
-  useEffect(() => {
-    if (!providerReady || isConnected) return;
-    const injected = connectors.find((c) => c.id === 'injected');
-    if (injected) connect({ connector: injected });
-  }, [providerReady, isConnected, connectors, connect]);
+  // Farcaster環境では injected のみ表示、それ以外は全コネクター表示
+  const visibleConnectors = isInMiniApp
+    ? connectors.filter((c) => c.id === 'injected')
+    : connectors;
   const [sins, setSins] = useState<WalletSins | null>(null);
   const [confessions, setConfessions] = useState<Confession[]>([]);
 
@@ -179,20 +177,25 @@ export default function Home() {
 
       {/* コネクターリスト */}
       <div className="w-full max-w-[360px] space-y-3 reveal-up" style={{ animationDelay: '0.35s' }}>
-        {connectors.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => handleConnect(c)}
-            className="
-              w-full py-3.5 text-[11px] tracking-widest2 uppercase
-              border border-paper/15 text-paper/60
-              hover:border-paper/40 hover:text-paper/90
-              active:scale-[0.98] transition-all duration-300
-            "
-          >
-            {walletName(c.id)}
-          </button>
-        ))}
+        {visibleConnectors.map((c) => {
+          const disabled = isInMiniApp && !providerReady;
+          return (
+            <button
+              key={c.id}
+              onClick={() => handleConnect(c)}
+              disabled={disabled}
+              className="
+                w-full py-3.5 text-[11px] tracking-widest2 uppercase
+                border border-paper/15 text-paper/60
+                hover:border-paper/40 hover:text-paper/90
+                active:scale-[0.98] transition-all duration-300
+                disabled:opacity-30 disabled:cursor-not-allowed
+              "
+            >
+              {disabled ? 'Preparing wallet...' : walletName(c.id)}
+            </button>
+          );
+        })}
       </div>
 
       <Footer />
