@@ -10,7 +10,6 @@ import {
   generateConfessions,
   calcSinScore,
   type WalletSins,
-  type Confession,
 } from '@/lib/blockscout';
 import { ConfessionCard } from '@/components/ConfessionCard';
 import { t, type Lang } from '@/lib/i18n';
@@ -23,10 +22,12 @@ export default function Home() {
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
-  const [phase, setPhase]           = useState<Phase>('connect');
-  const [sins, setSins]             = useState<WalletSins | null>(null);
-  const [confessions, setConfessions] = useState<Confession[]>([]);
-  const [lang, setLang]             = useState<Lang>('en');
+  const [phase, setPhase] = useState<Phase>('connect');
+  const [sins, setSins]   = useState<WalletSins | null>(null);
+  const [lang, setLang]   = useState<Lang>('en');
+
+  // Derive confessions from sins + lang so they update when language changes
+  const confessions = sins ? generateConfessions(sins, lang) : [];
 
   const tx = t[lang];
 
@@ -59,9 +60,7 @@ export default function Home() {
         fetchTotalTxCount(address),
       ]);
       const s = analyzeSins(txs, address, totalCount ?? undefined);
-      const c = generateConfessions(s);
       setSins(s);
-      setConfessions(c);
       setPhase('result');
     } catch {
       setPhase('error');
@@ -183,7 +182,7 @@ export default function Home() {
           onShare={handleShare}
         />
         <button
-          onClick={() => { setPhase('connect'); setSins(null); setConfessions([]); }}
+          onClick={() => { setPhase('connect'); setSins(null); }}
           className="mt-10 text-[9px] tracking-widest2 uppercase text-dim/40 hover:text-dim/70 transition-colors"
         >
           {tx.reset}

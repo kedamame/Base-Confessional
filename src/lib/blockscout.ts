@@ -158,139 +158,127 @@ export function analyzeSins(txs: Tx[], address: string, totalTxCount?: number): 
 export type Confession = {
   icon: string;
   text: string;
-  severity: 'minor' | 'moderate' | 'grave'; // 罪の重さ
+  severity: 'minor' | 'moderate' | 'grave';
 };
 
-export function generateConfessions(sins: WalletSins): Confession[] {
+type ConfessionTexts = {
+  gasGrave:       (eth: string, usd: string, meals: number) => string;
+  gasModerate:    (eth: string) => string;
+  gasMinor:       (micro: string) => string;
+  ghostGrave:     (days: number) => string;
+  ghostModerate:  (days: number) => string;
+  ghostMinor:     (days: number) => string;
+  nightGrave:     (n: number) => string;
+  nightModerate:  (n: number) => string;
+  failGrave:      (n: number) => string;
+  failModerate:   (n: number) => string;
+  deployModerate: (n: number) => string;
+  deployMinor:    () => string;
+  selfSend:       (n: number) => string;
+  veteran:        (days: number, txs: number) => string;
+  bigGas:         (eth: string) => string;
+  newbie:         () => string;
+};
+
+const confessionTexts: Record<'en' | 'ja', ConfessionTexts> = {
+  en: {
+    gasGrave:       (eth, usd, meals) => `I have sacrificed ${eth} ETH (~$${usd}) to gas fees. That's ${meals} meals. I don't regret it. I really don't.`,
+    gasModerate:    (eth) => `I burned ${eth} ETH in gas. Think of it as a donation to block producers.`,
+    gasMinor:       (micro) => `I paid ${micro} μETH in gas. Still a sinner, just a minor one.`,
+    ghostGrave:     (days) => `It has been ${days} days since my last on-chain activity. I am a ghost. Base has forgotten me.`,
+    ghostModerate:  (days) => `${days} days without a transaction. I keep telling myself I'm "just preparing."`,
+    ghostMinor:     (days) => `${days} days since my last TX. I'm calling it a weekly cadence.`,
+    nightGrave:     (n) => `${n} of my transactions were sent between midnight and 5am. Base never sleeps. Neither do I. Whether that was wise is unclear.`,
+    nightModerate:  (n) => `I confess to ${n} midnight transactions. Science confirms judgment worsens at night.`,
+    failGrave:      (n) => `I failed ${n} transactions. Only gas was consumed. This is called learning.`,
+    failModerate:   (n) => `${n} transactions ended in error. I know the feeling of paying gas and getting nothing.`,
+    deployModerate: (n) => `I deployed ${n} contracts. Whether they are still being called — I choose not to check. Ignorance is peace.`,
+    deployMinor:    () => `My contract exists quietly on the blockchain. Someone will use it someday. I believe this.`,
+    selfSend:       (n) => `I sent ETH to myself ${n} time(s). It was for testing. Truly. I did not enjoy it.`,
+    veteran:        (days, txs) => `This wallet has existed for ${days} days, yet has only ${txs} transactions. Time flies.`,
+    bigGas:         (eth) => `My single largest gas cost was ${eth} ETH. I remember that day. I have no regrets (mostly).`,
+    newbie:         () => `I have barely done anything on Base yet. That itself is a confession. Every journey begins with one step.`,
+  },
+  ja: {
+    gasGrave:       (eth, usd, meals) => `私は ${eth} ETH（約$${usd}）をガス代に捧げました。${meals}回の食事分です。私は後悔していません。本当です。`,
+    gasModerate:    (eth) => `私は ${eth} ETH をガス代として燃やしました。Block Producerへの献金と思えば気が楽になります。`,
+    gasMinor:       (micro) => `私は ${micro} μETH をガスとして支払いました。まだ罪は軽い方です。`,
+    ghostGrave:     (days) => `最後にBase上で動いてから ${days} 日が経過しています。私はゴーストです。Baseは私を覚えていません。`,
+    ghostModerate:  (days) => `${days} 日間、私はオンチェーン活動を休止しています。「準備中」と言い聞かせています。`,
+    ghostMinor:     (days) => `最後のTXから ${days} 日が経ちました。週1のペースを「適度」と呼ぶことにします。`,
+    nightGrave:     (n) => `私のTXのうち ${n} 件は深夜0〜5時台に実行されました。Baseは眠りません。私も眠りません。それで良かったかは分かりません。`,
+    nightModerate:  (n) => `${n} 件の深夜TXを告白します。夜に判断力が下がることは医学的に証明されています。`,
+    failGrave:      (n) => `私は ${n} 件のトランザクションを失敗させました。ガス代だけが消えました。これは学習です。`,
+    failModerate:   (n) => `${n} 件のTXがエラーで終わりました。ガスだけ払って何も起きない体験を知っています。`,
+    deployModerate: (n) => `私は ${n} 個のコントラクトをデプロイしました。それらが今も呼ばれているかは確認していません。知らぬが仏。`,
+    deployMinor:    () => `私のコントラクトは静かにBlockchainの上に存在しています。誰かが使う日を信じています。`,
+    selfSend:       (n) => `自分自身のウォレットに ${n} 回ETHを送りました。テストのためです。本当です。楽しんではいません。`,
+    veteran:        (days, txs) => `このウォレットは ${days} 日前から存在しますが、TXはわずか ${txs} 件です。時が経つのは早い。`,
+    bigGas:         (eth) => `私の最大ガス消費TXは ${eth} ETH でした。あの日何が起きたかは覚えています。後悔はしていません（少しだけしています）。`,
+    newbie:         () => `私はまだBase上でほとんど何もしていません。これ自体が告白です。全ての旅は一歩から始まります。`,
+  },
+};
+
+export function generateConfessions(sins: WalletSins, lang: 'en' | 'ja' = 'en'): Confession[] {
+  const c = confessionTexts[lang];
   const confessions: Confession[] = [];
 
-  // ガス代の懺悔
   if (sins.totalGasEth > 0) {
     const meals = Math.round(sins.totalGasUsd / 12);
     if (sins.totalGasEth > 0.1) {
-      confessions.push({
-        icon: '🔥',
-        text: `私は ${sins.totalGasEth.toFixed(4)} ETH（約$${sins.totalGasUsd.toFixed(0)}）をガス代に捧げました。${meals}回の食事分です。私は後悔していません。本当です。`,
-        severity: 'grave',
-      });
+      confessions.push({ icon: '🔥', severity: 'grave',
+        text: c.gasGrave(sins.totalGasEth.toFixed(4), sins.totalGasUsd.toFixed(0), meals) });
     } else if (sins.totalGasEth > 0.01) {
-      confessions.push({
-        icon: '⛽',
-        text: `私は ${sins.totalGasEth.toFixed(4)} ETH をガス代として燃やしました。Block Producerへの献金と思えば気が楽になります。`,
-        severity: 'moderate',
-      });
+      confessions.push({ icon: '⛽', severity: 'moderate',
+        text: c.gasModerate(sins.totalGasEth.toFixed(4)) });
     } else {
-      confessions.push({
-        icon: '💸',
-        text: `私は ${(sins.totalGasEth * 1e6).toFixed(0)} μETH をガスとして支払いました。まだ罪は軽い方です。`,
-        severity: 'minor',
-      });
+      confessions.push({ icon: '💸', severity: 'minor',
+        text: c.gasMinor((sins.totalGasEth * 1e6).toFixed(0)) });
     }
   }
 
-  // 放置の懺悔
   if (sins.daysSinceLastTx > 180) {
-    confessions.push({
-      icon: '👻',
-      text: `最後にBase上で動いてから ${sins.daysSinceLastTx} 日が経過しています。私はゴーストです。Baseは私を覚えていません。`,
-      severity: 'grave',
-    });
+    confessions.push({ icon: '👻', severity: 'grave',    text: c.ghostGrave(sins.daysSinceLastTx) });
   } else if (sins.daysSinceLastTx > 30) {
-    confessions.push({
-      icon: '😴',
-      text: `${sins.daysSinceLastTx} 日間、私はオンチェーン活動を休止しています。「準備中」と言い聞かせています。`,
-      severity: 'moderate',
-    });
+    confessions.push({ icon: '😴', severity: 'moderate', text: c.ghostModerate(sins.daysSinceLastTx) });
   } else if (sins.daysSinceLastTx > 7) {
-    confessions.push({
-      icon: '🌙',
-      text: `最後のTXから ${sins.daysSinceLastTx} 日が経ちました。週1のペースを「適度」と呼ぶことにします。`,
-      severity: 'minor',
-    });
+    confessions.push({ icon: '🌙', severity: 'minor',    text: c.ghostMinor(sins.daysSinceLastTx) });
   }
 
-  // 深夜活動の懺悔
   if (sins.nightTxCount > 10) {
-    confessions.push({
-      icon: '🕯️',
-      text: `私のTXのうち ${sins.nightTxCount} 件は深夜0〜5時台に実行されました。Baseは眠りません。私も眠りません。それで良かったかは分かりません。`,
-      severity: 'grave',
-    });
+    confessions.push({ icon: '🕯️', severity: 'grave',    text: c.nightGrave(sins.nightTxCount) });
   } else if (sins.nightTxCount > 3) {
-    confessions.push({
-      icon: '🌃',
-      text: `${sins.nightTxCount} 件の深夜TXを告白します。夜に判断力が下がることは医学的に証明されています。`,
-      severity: 'moderate',
-    });
+    confessions.push({ icon: '🌃', severity: 'moderate', text: c.nightModerate(sins.nightTxCount) });
   }
 
-  // 失敗TXの懺悔
   if (sins.failedTxCount > 5) {
-    confessions.push({
-      icon: '💀',
-      text: `私は ${sins.failedTxCount} 件のトランザクションを失敗させました。ガス代だけが消えました。これは学習です。`,
-      severity: 'grave',
-    });
+    confessions.push({ icon: '💀', severity: 'grave',    text: c.failGrave(sins.failedTxCount) });
   } else if (sins.failedTxCount > 0) {
-    confessions.push({
-      icon: '❌',
-      text: `${sins.failedTxCount} 件のTXがエラーで終わりました。ガスだけ払って何も起きない体験を知っています。`,
-      severity: 'moderate',
-    });
+    confessions.push({ icon: '❌', severity: 'moderate', text: c.failModerate(sins.failedTxCount) });
   }
 
-  // 誰にも使われないコントラクトの懺悔
   if (sins.contractDeploys > 2) {
-    confessions.push({
-      icon: '🏚️',
-      text: `私は ${sins.contractDeploys} 個のコントラクトをデプロイしました。それらが今も呼ばれているかは確認していません。知らぬが仏。`,
-      severity: 'moderate',
-    });
+    confessions.push({ icon: '🏚️', severity: 'moderate', text: c.deployModerate(sins.contractDeploys) });
   } else if (sins.contractDeploys === 1) {
-    confessions.push({
-      icon: '🔮',
-      text: `私のコントラクトは静かにBlockchainの上に存在しています。誰かが使う日を信じています。`,
-      severity: 'minor',
-    });
+    confessions.push({ icon: '🔮', severity: 'minor',    text: c.deployMinor() });
   }
 
-  // 自己送金の懺悔
   if (sins.selfSends > 0) {
-    confessions.push({
-      icon: '🪞',
-      text: `自分自身のウォレットに ${sins.selfSends} 回ETHを送りました。テストのためです。本当です。楽しんではいません。`,
-      severity: 'minor',
-    });
+    confessions.push({ icon: '🪞', severity: 'minor',    text: c.selfSend(sins.selfSends) });
   }
 
-  // ベテランの懺悔
   if (sins.walletAgeDays > 365 && sins.totalTxCount < 20) {
-    confessions.push({
-      icon: '🧓',
-      text: `このウォレットは ${sins.walletAgeDays} 日前から存在しますが、TXはわずか ${sins.totalTxCount} 件です。時が経つのは早い。`,
-      severity: 'moderate',
-    });
+    confessions.push({ icon: '🧓', severity: 'moderate', text: c.veteran(sins.walletAgeDays, sins.totalTxCount) });
   }
 
-  // ガスを使いすぎる一回のTX
   if (sins.biggestGasTx > 0.01) {
-    confessions.push({
-      icon: '💣',
-      text: `私の最大ガス消費TXは ${sins.biggestGasTx.toFixed(4)} ETH でした。あの日何が起きたかは覚えています。後悔はしていません（少しだけしています）。`,
-      severity: 'grave',
-    });
+    confessions.push({ icon: '💣', severity: 'grave',    text: c.bigGas(sins.biggestGasTx.toFixed(4)) });
   }
 
-  // 初心者/全員への普遍的な懺悔（常に最低1つ追加）
   if (confessions.length === 0 || sins.totalTxCount === 0) {
-    confessions.push({
-      icon: '🌿',
-      text: `私はまだBase上でほとんど何もしていません。これ自体が告白です。全ての旅は一歩から始まります。`,
-      severity: 'minor',
-    });
+    confessions.push({ icon: '🌿', severity: 'minor',    text: c.newbie() });
   }
 
-  // 最大4件まで返す
   return confessions.slice(0, 4);
 }
 
