@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/farcaster';
 import {
@@ -16,12 +16,19 @@ import { ConfessionCard } from '@/components/ConfessionCard';
 type Phase = 'connect' | 'loading' | 'result' | 'error';
 
 export default function Home() {
-  const { isInMiniApp, isLoading: fcLoading, user } = useFarcasterMiniApp();
+  const { isInMiniApp, isLoading: fcLoading, user, providerReady } = useFarcasterMiniApp();
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
 
   const [phase, setPhase] = useState<Phase>('connect');
+
+  // Farcaster環境: window.ethereum セット完了後に injected コネクターで自動接続
+  useEffect(() => {
+    if (!providerReady || isConnected) return;
+    const injected = connectors.find((c) => c.id === 'injected');
+    if (injected) connect({ connector: injected });
+  }, [providerReady, isConnected, connectors, connect]);
   const [sins, setSins] = useState<WalletSins | null>(null);
   const [confessions, setConfessions] = useState<Confession[]>([]);
 

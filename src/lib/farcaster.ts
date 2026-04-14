@@ -13,6 +13,8 @@ interface FarcasterState {
   isInMiniApp: boolean;
   isLoading: boolean;
   user: FarcasterUser | null;
+  /** Farcasterウォレットプロバイダーがwindow.ethereumにセット済みか */
+  providerReady: boolean;
 }
 
 export function useFarcasterMiniApp(): FarcasterState {
@@ -20,6 +22,7 @@ export function useFarcasterMiniApp(): FarcasterState {
     isInMiniApp: false,
     isLoading: true,
     user: null,
+    providerReady: false,
   });
   const initialized = useRef(false);
 
@@ -31,19 +34,21 @@ export function useFarcasterMiniApp(): FarcasterState {
       .then(async ({ sdk }) => {
         const isMiniApp = await sdk.isInMiniApp();
         if (!isMiniApp) {
-          setState({ isInMiniApp: false, isLoading: false, user: null });
+          setState({ isInMiniApp: false, isLoading: false, user: null, providerReady: false });
           return;
         }
 
         // Farcasterのスプラッシュを消す
         sdk.actions.ready();
 
-        // Farcasterウォレットをwindow.ethereumに公開
+        // Farcasterウォレットをwindow.ethereumにセットしてからstateを更新
+        let providerReady = false;
         try {
           const ethProvider = await sdk.wallet.getEthereumProvider();
           if (ethProvider && typeof window !== 'undefined') {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (window as any).ethereum = ethProvider;
+            providerReady = true;
           }
         } catch {
           // ウォレットプロバイダー非対応
@@ -66,10 +71,11 @@ export function useFarcasterMiniApp(): FarcasterState {
           // コンテキスト取得不可
         }
 
-        setState({ isInMiniApp: true, isLoading: false, user });
+        // providerReady が true になってから state を更新 → page.tsx の useEffect がauto-connectをトリガー
+        setState({ isInMiniApp: true, isLoading: false, user, providerReady });
       })
       .catch(() => {
-        setState({ isInMiniApp: false, isLoading: false, user: null });
+        setState({ isInMiniApp: false, isLoading: false, user: null, providerReady: false });
       });
   }, []);
 
