@@ -1,0 +1,32 @@
+{
+  "accountAssociation": {
+    "header": "TODO_GENERATE_WITH_WARPCAST_MANIFEST_TOOL",
+    "payload": "TODO_GENERATE_WITH_WARPCAST_MANIFEST_TOOL",
+    "signature": "TODO_GENERATE_WITH_WARPCAST_MANIFEST_TOOL"
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Base Confessional",
+    "homeUrl": "https://base-confessional.vercel.app",
+    "iconUrl": "https://base-confessional.vercel.app/icon.png",
+    "splashImageUrl": "https://base-confessional.vercel.app/splash.png",
+    "splashBackgroundColor": "#0a0a0a",
+    "subtitle": "Confess your on-chain sins",
+    "description": "Connect your wallet and confess your Base Mainnet sins. Gas burned, midnight trades, failed transactions - all exposed.",
+    "screenshotUrls": [
+      "https://base-confessional.vercel.app/screenshot1.png",
+      "https://base-confessional.vercel.app/screenshot2.png",
+      "https://base-confessional.vercel.app/screenshot3.png"
+    ],
+    "primaryCategory": "entertainment",
+    "tags": ["base", "onchain", "defi", "wallet", "fun"],
+    "heroImageUrl": "https://base-confessional.vercel.app/og-image.png",
+    "tagline": "Confess your on-chain sins",
+    "ogTitle": "Base Confessional",
+    "ogDescription": "Your wallet has sins. Time to confess them on Base.",
+    "ogImageUrl": "https://base-confessional.vercel.app/og-image.png",
+    "requiredChains": ["eip155:8453"],
+    "requiredCapabilities": [],
+    "noindex": false
+  }
+}
