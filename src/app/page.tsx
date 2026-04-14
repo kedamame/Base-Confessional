@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/farcaster';
 import {
@@ -22,13 +22,22 @@ export default function Home() {
   const { disconnect } = useDisconnect();
 
   const [phase, setPhase] = useState<Phase>('connect');
-
-  // Farcaster環境では injected のみ表示、それ以外は全コネクター表示
-  const visibleConnectors = isInMiniApp
-    ? connectors.filter((c) => c.id === 'injected')
-    : connectors;
   const [sins, setSins] = useState<WalletSins | null>(null);
   const [confessions, setConfessions] = useState<Confession[]>([]);
+  // Farcasterプロバイダーの準備タイムアウト（5秒後は全コネクター表示）
+  const [providerTimedOut, setProviderTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isInMiniApp || providerReady) return;
+    const t = setTimeout(() => setProviderTimedOut(true), 5000);
+    return () => clearTimeout(t);
+  }, [isInMiniApp, providerReady]);
+
+  // Farcaster: providerReady or timedOut になるまで injected のみ表示、それ以降は全表示
+  const showAllConnectors = !isInMiniApp || providerReady || providerTimedOut;
+  const visibleConnectors = showAllConnectors
+    ? connectors
+    : connectors.filter((c) => c.id === 'injected');
 
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || 'https://base-confessional.vercel.app';
@@ -177,25 +186,20 @@ export default function Home() {
 
       {/* コネクターリスト */}
       <div className="w-full max-w-[360px] space-y-3 reveal-up" style={{ animationDelay: '0.35s' }}>
-        {visibleConnectors.map((c) => {
-          const disabled = isInMiniApp && !providerReady;
-          return (
-            <button
-              key={c.id}
-              onClick={() => handleConnect(c)}
-              disabled={disabled}
-              className="
-                w-full py-3.5 text-[11px] tracking-widest2 uppercase
-                border border-paper/15 text-paper/60
-                hover:border-paper/40 hover:text-paper/90
-                active:scale-[0.98] transition-all duration-300
-                disabled:opacity-30 disabled:cursor-not-allowed
-              "
-            >
-              {disabled ? 'Preparing wallet...' : walletName(c.id)}
-            </button>
-          );
-        })}
+        {visibleConnectors.map((c) => (
+          <button
+            key={c.id}
+            onClick={() => handleConnect(c)}
+            className="
+              w-full py-3.5 text-[11px] tracking-widest2 uppercase
+              border border-paper/15 text-paper/60
+              hover:border-paper/40 hover:text-paper/90
+              active:scale-[0.98] transition-all duration-300
+            "
+          >
+            {walletName(c.id)}
+          </button>
+        ))}
       </div>
 
       <Footer />
