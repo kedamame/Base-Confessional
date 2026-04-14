@@ -5,6 +5,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { useFarcasterMiniApp } from '@/lib/farcaster';
 import {
   fetchTxList,
+  fetchTotalTxCount,
   analyzeSins,
   generateConfessions,
   calcSinScore,
@@ -47,8 +48,11 @@ export default function Home() {
     if (!address) return;
     setPhase('loading');
     try {
-      const txs = await fetchTxList(address);
-      const s = analyzeSins(txs, address);
+      const [txs, totalCount] = await Promise.all([
+        fetchTxList(address),
+        fetchTotalTxCount(address),
+      ]);
+      const s = analyzeSins(txs, address, totalCount ?? undefined);
       const c = generateConfessions(s);
       setSins(s);
       setConfessions(c);

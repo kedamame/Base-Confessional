@@ -1,4 +1,5 @@
-const BLOCKSCOUT = 'https://base.blockscout.com/api';
+const BLOCKSCOUT    = 'https://base.blockscout.com/api';
+const BLOCKSCOUT_V2 = 'https://base.blockscout.com/api/v2';
 
 export type Tx = {
   hash: string;
@@ -19,6 +20,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   ]);
 }
 
+/** 直近100件のTX一覧（ガス計算・パターン分析用） */
 export async function fetchTxList(address: string): Promise<Tx[]> {
   const result = await withTimeout(
     fetch(
@@ -34,6 +36,22 @@ export async function fetchTxList(address: string): Promise<Tx[]> {
     8000,
   );
   return result ?? [];
+}
+
+/** Blockscout v2 API でアドレスの実際の総TX数を取得 */
+export async function fetchTotalTxCount(address: string): Promise<number | null> {
+  const result = await withTimeout(
+    fetch(`${BLOCKSCOUT_V2}/addresses/${address}`, { cache: 'no-store' })
+      .then((r) => r.text())
+      .then((text) => {
+        const json = JSON.parse(text) as { transaction_count?: number };
+        return typeof json.transaction_count === 'number'
+          ? json.transaction_count
+          : null;
+      }),
+    5000,
+  );
+  return result ?? null;
 }
 
 // ---------- 罪の解析 ----------
@@ -59,10 +77,11 @@ function weiToEth(wei: bigint): number {
 
 const ETH_PRICE_USD = 1800; // 概算 — OGには使わないので固定値でOK
 
-export function analyzeSins(txs: Tx[], address: string): WalletSins {
+/** totalTxCount: v2 APIで取得した実際の総数を渡す。未取得時は txs.length にフォールバック */
+export function analyzeSins(txs: Tx[], address: string, totalTxCount?: number): WalletSins {
   if (txs.length === 0) {
     return {
-      totalTxCount: 0,
+      totalTxCount: totalTxCount ?? 0,
       totalGasEth: 0,
       totalGasUsd: 0,
       daysSinceLastTx: 9999,
@@ -119,7 +138,7 @@ export function analyzeSins(txs: Tx[], address: string): WalletSins {
   const totalGasEth = weiToEth(totalGasWei);
 
   return {
-    totalTxCount: txs.length,
+    totalTxCount: totalTxCount ?? txs.length,
     totalGasEth,
     totalGasUsd: totalGasEth * ETH_PRICE_USD,
     daysSinceLastTx: Math.floor((now - latestTs) / 86400),
