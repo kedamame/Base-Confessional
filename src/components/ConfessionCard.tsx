@@ -22,8 +22,6 @@ function SinMeter({ score, lang }: { score: number; lang: Lang }) {
   const { ja, label, color } = sinLabel(score);
   const pct = `${score}%`;
   const tx = t[lang];
-  const sinJaLabel = lang === 'ja' ? ja : label;
-
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-baseline">
@@ -39,9 +37,10 @@ function SinMeter({ score, lang }: { score: number; lang: Lang }) {
         />
       </div>
       <div className="flex justify-between items-baseline">
-        <span className="text-xs italic text-accent">{sinJaLabel}</span>
+        {/* 左: サブ言語（italic）、右: 現在言語（colored uppercase） */}
+        <span className="text-xs italic text-accent">{lang === 'ja' ? label : ja}</span>
         <span className="text-[9px] tracking-widest2 uppercase" style={{ color }}>
-          {lang === 'ja' ? label : ja}
+          {lang === 'ja' ? ja : label}
         </span>
       </div>
     </div>
