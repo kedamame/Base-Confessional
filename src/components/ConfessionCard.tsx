@@ -127,6 +127,10 @@ export function ConfessionCard({
           The Record
         </p>
         <StatRow label="Total TX"       value={sins.totalTxCount.toString()} />
+        <div className="h-px bg-muted/50 my-2" />
+        <p className="text-[8px] text-dim/40 italic mb-2">
+          Based on latest 100 transactions
+        </p>
         <StatRow label="Gas Burned"     value={`${sins.totalGasEth.toFixed(5)} ETH`} />
         <StatRow label="Contract Calls" value={sins.contractCalls.toString()} />
         <StatRow label="Deployments"    value={sins.contractDeploys.toString()} />
